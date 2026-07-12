@@ -1,0 +1,67 @@
+[project]
+name = "harness"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "himansu9805",email = "himansu9805@gmail.com"}
+]
+requires-python = "<3.14,>=3.12"
+dependencies = [
+    "litellm (>=1.91.0,<2.0.0)",
+    "aiofiles (>=25.1.0,<26.0.0)",
+    "pydantic-settings (>=2.14.2,<3.0.0)",
+    "mcp (>=1.28.1,<2.0.0)"
+]
+
+[tool.poetry]
+package-mode = false
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.1.1,<10.0.0)",
+    "isort (>=6.0.0,<7.0.0)",
+    "flake8 (>=7.1.0,<8.0.0)",
+    "pylint (>=3.3.0,<4.0.0)",
+    "pre-commit (>=4.0.0,<5.0.0)"
+]
+
+[tool.isort]
+# Keep import ordering compatible with Black-style formatting.
+profile = "black"
+line_length = 88
+src_paths = ["harness", "tests"]
+known_first_party = ["harness"]
+# Disambiguate the third-party `mcp` SDK from the local `harness/mcp` package.
+known_third_party = ["mcp"]
+
+[tool.pylint.main]
+py-version = "3.12"
+jobs = 0  # Parallelise across all available CPUs.
+ignore = [".venv", "__pycache__"]
+# Resolve first-party `harness.*` imports without installing the package.
+source-roots = ["."]
+
+[tool.pylint.format]
+max-line-length = 88
+
+[tool.pylint."messages control"]
+# Docstrings are enforced; these are disabled because they clash with common
+# patterns in this codebase (ABCs, Pydantic models) or overlap with flake8.
+disable = [
+    "too-few-public-methods",   # ABCs and Pydantic models legitimately have few.
+    "duplicate-code",           # Noisy across the small, similar registry classes.
+    "logging-fstring-interpolation",
+    "broad-exception-caught",   # Intentional at registry/tool boundaries.
+]
+
+[tool.pylint.design]
+max-args = 8
+max-locals = 25
+
+[tool.pylint.basic]
+good-names = ["id", "fh", "_"]

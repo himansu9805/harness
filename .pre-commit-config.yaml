@@ -1,0 +1,42 @@
+# Run `pre-commit install` once to enable these on every `git commit`.
+# Run `make pre-commit` (or `pre-commit run --all-files`) to check everything.
+default_language_version:
+  python: python3.12
+
+repos:
+  # General file hygiene.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  # Project linters, run via Poetry so they share the pinned versions and the
+  # configuration in pyproject.toml / .flake8.
+  - repo: local
+    hooks:
+      - id: isort
+        name: isort
+        entry: poetry run isort
+        language: system
+        types: [python]
+
+      - id: flake8
+        name: flake8
+        entry: poetry run flake8
+        language: system
+        types: [python]
+
+      - id: pylint
+        name: pylint
+        entry: poetry run pylint
+        language: system
+        types: [python]
+        # Lint the package as a whole so cross-module checks work.
+        pass_filenames: false
+        args: ["harness"]
