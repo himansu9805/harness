@@ -254,4 +254,5 @@ Line length is **88** across all three tools.
 
 ## License
 
-No license has been specified for this project yet.
+Released under the [MIT License](LICENSE). See the `LICENSE` file for the full
+text.

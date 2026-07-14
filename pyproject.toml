@@ -27,8 +27,15 @@ dev = [
     "isort (>=6.0.0,<7.0.0)",
     "flake8 (>=7.1.0,<8.0.0)",
     "pylint (>=3.3.0,<4.0.0)",
-    "pre-commit (>=4.0.0,<5.0.0)"
+    "pre-commit (>=4.0.0,<5.0.0)",
+    "pytest-asyncio (>=1.4.0,<2.0.0)"
 ]
+
+[tool.pytest.ini_options]
+# Let async test functions run without a per-test decorator.
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra"
 
 [tool.isort]
 # Keep import ordering compatible with Black-style formatting.
