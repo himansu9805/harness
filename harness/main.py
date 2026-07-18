@@ -35,9 +35,7 @@ async def main():
             messages=[
                 ChatMessage(
                     role="user",
-                    content=(
-                        "what is the latest weather details of whitefield, bengaluru?"
-                    ),
+                    content=("latest news related to manchester city"),
                 )
             ],
         )

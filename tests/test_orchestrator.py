@@ -4,7 +4,6 @@ import pytest
 
 from harness.agent.memory.in_memory import InMemoryMemory
 from harness.agent.orchestrator.orchestrator import (
-    MAX_TOOL_ITERATIONS,
     AgentOrchestrator,
     _preview,
 )
@@ -123,19 +122,83 @@ async def test_tool_messages_added_to_history(settings, tool_registry):
     assert roles == ["user", "assistant", "tool", "assistant"]
 
 
-async def test_gives_up_after_max_iterations(settings, tool_registry):
-    steps = [
-        {
-            "action": "call_tools",
-            "assistant_content": None,
-            "tool_calls": [{"id": "c1", "name": "echo", "arguments": {}}],
-        }
-        for _ in range(MAX_TOOL_ITERATIONS)
-    ]
+def _distinct_call(i):
+    return {
+        "action": "call_tools",
+        "assistant_content": None,
+        "tool_calls": [{"id": f"c{i}", "name": "echo", "arguments": {"i": i}}],
+    }
+
+
+def _same_call():
+    return {
+        "action": "call_tools",
+        "assistant_content": None,
+        "tool_calls": [{"id": "c", "name": "echo", "arguments": {"same": True}}],
+    }
+
+
+async def test_budget_can_be_overridden_per_turn(settings, tool_registry):
+    # 3 distinct tool calls then a forced summary once the budget is spent.
+    steps = [_distinct_call(i) for i in range(3)]
+    steps.append({"action": "respond", "content": "here is what I found"})
     orch = _orchestrator(settings, tool_registry, steps)
-    resp = await orch.run_turn(session_id="s", messages=[])
-    assert "wasn't able to complete" in resp.message.content
-    assert len(resp.tool_calls) == MAX_TOOL_ITERATIONS
+    resp = await orch.run_turn(session_id="s", messages=[], max_iterations=3)
+    assert resp.message.content == "here is what I found"
+    assert len(resp.tool_calls) == 3
+
+
+async def test_stall_detection_ends_turn_early(settings, tool_registry):
+    # Same call repeated: should stop after max_repeated_tool_calls (default 3),
+    # having executed it only twice, then summarise.
+    steps = [_same_call(), _same_call(), _same_call()]
+    steps.append({"action": "respond", "content": "stopping, no progress"})
+    orch = _orchestrator(settings, tool_registry, steps)
+    resp = await orch.run_turn(session_id="s", messages=[], max_iterations=20)
+    assert resp.message.content == "stopping, no progress"
+    assert len(resp.tool_calls) == 2
+
+
+async def test_distinct_calls_do_not_trip_stall_guard(settings, tool_registry):
+    # Many different calls in a row must not be mistaken for a stall.
+    steps = [_distinct_call(i) for i in range(5)]
+    steps.append({"action": "respond", "content": "done"})
+    orch = _orchestrator(settings, tool_registry, steps)
+    resp = await orch.run_turn(session_id="s", messages=[], max_iterations=10)
+    assert resp.message.content == "done"
+    assert len(resp.tool_calls) == 5
+
+
+async def test_forced_summary_falls_back_when_model_wont_answer(
+    settings, tool_registry
+):
+    # Budget spent, and the forced final call still asks for tools (no answer):
+    # fall back to the static message.
+    steps = [_distinct_call(0), _distinct_call(1)]
+    orch = _orchestrator(settings, tool_registry, steps)
+    resp = await orch.run_turn(session_id="s", messages=[], max_iterations=1)
+    assert "wasn't able to fully complete" in resp.message.content
+    assert len(resp.tool_calls) == 1
+
+
+def test_tool_call_signature_normalises_dict_and_json_string():
+    dict_sig = AgentOrchestrator._tool_call_signature(
+        [{"name": "echo", "arguments": {"a": 1, "b": 2}}]
+    )
+    json_sig = AgentOrchestrator._tool_call_signature(
+        [{"name": "echo", "arguments": '{"b": 2, "a": 1}'}]
+    )
+    assert dict_sig == json_sig
+
+
+def test_tool_call_signature_is_order_independent():
+    a = AgentOrchestrator._tool_call_signature(
+        [{"name": "x", "arguments": {}}, {"name": "y", "arguments": {}}]
+    )
+    b = AgentOrchestrator._tool_call_signature(
+        [{"name": "y", "arguments": {}}, {"name": "x", "arguments": {}}]
+    )
+    assert a == b
 
 
 def test_to_openai_tool_schema_wraps_definitions():

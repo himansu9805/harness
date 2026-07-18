@@ -14,8 +14,11 @@ against a model you host yourself.
 ## Features
 
 - **Plan-act orchestration** — an agent loop that plans a step, executes any
-  requested tool calls, feeds results back, and repeats until the model responds
-  (bounded by `MAX_TOOL_ITERATIONS`).
+  requested tool calls, feeds results back, and repeats until the model
+  responds. Bounded by a configurable iteration **budget** and a **stall guard**
+  (stops early when the model repeats the identical tool calls with no
+  progress); on either limit the model is asked to summarise rather than bailing
+  with a canned message.
 - **Unified tool registry** — built-in, MCP, and skill tools are listed and
   invoked through one interface and advertised to the model in OpenAI
   function-calling format.
@@ -65,6 +68,8 @@ Settings are loaded from the environment (and an optional `.env` file) via
 | LLM base URL | `OLLAMA_BASE_URL` | `http://localhost:11434` |
 | MCP servers config | `MCP_SERVERS_CONFIG_PATH` | `configs/mcp_servers.yaml` |
 | MCP request timeout | `MCP_REQUEST_TIMEOUT_SECONDS` | `30` |
+| Max tool iterations (budget) | `MAX_TOOL_ITERATIONS` | `50` |
+| Stall guard (identical repeats) | `MAX_REPEATED_TOOL_CALLS` | `3` |
 | Log level | `LOG_LEVEL` | `INFO` |
 
 Example `.env`:
